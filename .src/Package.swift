@@ -4,18 +4,18 @@
 import PackageDescription
 
 let package = Package(
-    name: "Engine",
+    name: "EqualynxCore",
 	platforms: [.macOS(.v26)],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .executableTarget(
-            name: "Engine",
+            name: "EqualynxCore",
             swiftSettings: [.enableExperimentalFeature("Extern")]
         ),
         .testTarget(
-            name: "EngineTests",
-            dependencies: ["Engine"]
+            name: "EqualynxCoreTests",
+            dependencies: ["EqualynxCore"]
         ),
     ],
     swiftLanguageModes: [.v6]

@@ -1,7 +1,7 @@
 /*
  * Equalynx — WASM bridge.
  *
- * Loads the Swift-compiled math engine (Engine.wasm) and drives the manual memory
+ * Loads the Swift-compiled math engine (EqualynxCore.wasm) and drives the manual memory
  * protocol: allocate input bytes, call an export, read the result pointer + length,
  * decode, free. Mirrors GradGame's gradgame-wasm.js. Exposes:
  *   window.Equalynx.ready       — promise that resolves once the module is live
@@ -10,7 +10,7 @@
 (function () {
   "use strict";
 
-  const WASM_URL = "Engine.wasm";
+  const WASM_URL = "EqualynxCore.wasm";
   const OK = 0;
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
@@ -77,7 +77,7 @@
     if (smoke !== 5) {
       throw new Error("Engine smoke test failed: add(2, 3) = " + smoke);
     }
-    console.log("[Equalynx] Engine.wasm ready — add(2, 3) =", smoke);
+    console.log("[Equalynx] EqualynxCore.wasm ready — add(2, 3) =", smoke);
     return api;
   }
 
