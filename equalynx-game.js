@@ -41,6 +41,17 @@
     await renderEquation(currentEquation);
   }
 
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Shift") {
+      document.body.classList.add("show-indices");
+    }
+  });
+  window.addEventListener("keyup", (e) => {
+    if (e.key === "Shift") {
+      document.body.classList.remove("show-indices");
+    }
+  });
+
 
 
   // Render an equation string into draggable token elements (DOM)
@@ -59,6 +70,7 @@
       const el = document.createElement("div");
       el.className = "token";
       el.dataset.id = String(token.id);
+      el.dataset.index = String(localTokenEls.length);
       el.dataset.kind = token.kind;
       el.dataset.value = token.value;
       el.dataset.glue = token.glue ? "true" : "false";
