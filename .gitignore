@@ -1,0 +1,9 @@
+.DS_Store
+.build/
+.src/.build/
+.swiftpm/
+.src/.swiftpm/
+node_modules/
+.antigravitycli
+CLAUDE.md
+AGENTS.md
