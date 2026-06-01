@@ -32,7 +32,7 @@
         enableMenu: false,
       },
       output: {
-        font: "mathjax-newcm",
+        font: "mathjax-modern",
       },
     };
   }

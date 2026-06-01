@@ -34,7 +34,7 @@ struct Simplifier {
     /// Where a folded magnitude falls relative to float32's representable range.
     private enum Magnitude {
         case normal
-        case tooLarge
+        case overflow
         case underflow
     }
 
@@ -46,7 +46,7 @@ struct Simplifier {
             // collapses to 0. An in-range literal is returned untouched.
             if case let .number(text) = expression, let value = DecimalValue(literal: text) {
                 switch classify(value) {
-                case .tooLarge:
+                case .overflow:
                     throw ExpressionParserError.numberTooLarge
                 case .underflow:
                     return .number("0")
@@ -90,7 +90,7 @@ struct Simplifier {
     private func classify(_ value: DecimalValue) -> Magnitude {
         if value.isZero { return .normal }
         let exponent = value.rounded().exponent
-        if exponent > Simplifier.maximumExponent { return .tooLarge }
+        if exponent > Simplifier.maximumExponent { return .overflow }
         if exponent < Simplifier.minimumExponent { return .underflow }
         return .normal
     }
@@ -101,7 +101,7 @@ struct Simplifier {
     private func classify(_ value: Rational) -> Magnitude {
         if value.isZero { return .normal }
         let exponent = value.numerator.rounded().exponent - value.denominator.rounded().exponent
-        if exponent > Simplifier.maximumExponent { return .tooLarge }
+        if exponent > Simplifier.maximumExponent { return .overflow }
         if exponent < Simplifier.minimumExponent { return .underflow }
         return .normal
     }
@@ -112,7 +112,7 @@ struct Simplifier {
     /// it is built back into an expression.
     private func capped(_ value: Rational) throws -> Rational {
         switch classify(value) {
-        case .tooLarge:
+        case .overflow:
             throw ExpressionParserError.numberTooLarge
         case .underflow:
             return .zero

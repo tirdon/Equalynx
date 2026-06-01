@@ -27,6 +27,20 @@ enum TeXGlyph {
         }
     }
 
+    static func variable(_ name: String) -> String {
+        switch name {
+        case "alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta",
+             "iota", "kappa", "lambda", "mu", "nu", "xi", "omicron", "pi", "rho",
+             "sigma", "tau", "upsilon", "phi", "chi", "psi", "omega",
+             "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta",
+             "Iota", "Kappa", "Lambda", "Mu", "Nu", "Xi", "Omicron", "Pi", "Rho",
+             "Sigma", "Tau", "Upsilon", "Phi", "Chi", "Psi", "Omega":
+            return "\\" + name
+        default:
+            return name
+        }
+    }
+
     static func constant(_ name: String) -> String {
         switch name {
         case "pi":

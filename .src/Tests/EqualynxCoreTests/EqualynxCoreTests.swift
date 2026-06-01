@@ -47,37 +47,37 @@ import Testing
 
 // Token ids for "3 + 5 = 8": 0=`3`, 1=`+`, 2=`5`, 3=`=`, 4=`8`.
 
-@Test func combineCrossSideSubtractsTargetFromBothSides() throws {
-    // Drop the answer 8 (id 4) onto the term 5 (id 2): eliminate the 5 -> 3 = 3.
-    #expect(try combineEquation("3 + 5 = 8", draggedId: 4, targetId: 2) == "3 = 3")
+@Test func combineCrossSideSubtractsDraggedFromBothSides() throws {
+    // Drop the answer 8 (id 4) onto the left side (side 0): subtract 8 from both -> 0 = 0.
+    #expect(try combineEquation("3 + 5 = 8", draggedId: 4, targetSide: 0) == "0 = 0")
 }
 
 @Test func combineSameSideMergesTerms() throws {
-    // Drop 3 (id 0) onto 5 (id 2), both on the left: 3 + 5 -> 8, so 8 = 8.
-    #expect(try combineEquation("3 + 5 = 8", draggedId: 0, targetId: 2) == "8 = 8")
+    // Drop 3 (id 0) onto the left side (side 0): 3 + 5 -> 8, so 8 = 8.
+    #expect(try combineEquation("3 + 5 = 8", draggedId: 0, targetSide: 0) == "8 = 8")
 }
 
 @Test func combineCrossSideEliminatingTheAnswer() throws {
-    // Drop 5 (id 2) onto 8 (id 4): subtract 8 from both -> 0 = 0.
-    #expect(try combineEquation("3 + 5 = 8", draggedId: 2, targetId: 4) == "0 = 0")
+    // Drop 5 (id 2) onto the right side (side 1): subtract 5 from both -> 3 = 3.
+    #expect(try combineEquation("3 + 5 = 8", draggedId: 2, targetSide: 1) == "3 = 3")
 }
 
-@Test func combineRejectsOperatorToken() {
+@Test func combineRejectsInvalidSide() {
     #expect(throws: CombineError.self) {
-        _ = try combineEquation("3 + 5 = 8", draggedId: 4, targetId: 1) // 1 is `+`
+        _ = try combineEquation("3 + 5 = 8", draggedId: 4, targetSide: 2) // 2 is invalid side
     }
 }
 
 @Test func combineRejectsBareExpression() {
     #expect(throws: CombineError.self) {
-        _ = try combineEquation("3 + 5", draggedId: 0, targetId: 2)
+        _ = try combineEquation("3 + 5", draggedId: 0, targetSide: 1)
     }
 }
 
 @Test func combineRejectsNonAdditiveEquation() {
     // "6 * 7 = 42": multiply isn't an additive term.
     #expect(throws: CombineError.self) {
-        _ = try combineEquation("6 * 7 = 42", draggedId: 0, targetId: 2)
+        _ = try combineEquation("6 * 7 = 42", draggedId: 0, targetSide: 1)
     }
 }
 
@@ -93,30 +93,28 @@ import Testing
 }
 
 @Test func linearMoveAddendAcrossByAdditiveInverse() throws {
-    // Drag the addend 3 (id 3) onto 5: subtract 3 from both sides -> 2x = 2.
-    #expect(try combineEquation("2x + 3 = 5", draggedId: 3, targetId: 5) == "2x = 2")
+    // Drag the addend 3 (id 3) onto the right side (side 1): subtract 3 from both sides -> 2x = 2.
+    #expect(try combineEquation("2x + 3 = 5", draggedId: 3, targetSide: 1) == "2x = 2")
 }
 
 @Test func linearMoveMultiplicandAcrossByMultiplicativeInverse() throws {
-    // Drag the multiplicand 2 (id 0) onto 2: divide both sides by 2 -> x = 1.
-    #expect(try combineEquation("2x = 2", draggedId: 0, targetId: 3) == "x = 1")
+    // Drag the multiplicand 2 (id 0) onto the right side (side 1): divide both sides by 2 -> x = 1.
+    #expect(try combineEquation("2x = 2", draggedId: 0, targetSide: 1) == "x = 1")
 }
 
 @Test func linearFullSolvePathReachesGoal() throws {
-    let step1 = try combineEquation("2x + 3 = 5", draggedId: 3, targetId: 5)
+    let step1 = try combineEquation("2x + 3 = 5", draggedId: 3, targetSide: 1)
     #expect(step1 == "2x = 2")
-    let step2 = try combineEquation(step1, draggedId: 0, targetId: 3)
+    let step2 = try combineEquation(step1, draggedId: 0, targetSide: 1)
     #expect(step2 == "x = 1")
 }
 
 @Test func linearDivideKeepsExactFraction() throws {
     // 2x = 3, divide by 2 -> x = 3/2 (no rounding).
-    #expect(try combineEquation("2x = 3", draggedId: 0, targetId: 3) == "x = 3/2")
+    #expect(try combineEquation("2x = 3", draggedId: 0, targetSide: 1) == "x = 3/2")
 }
 
-@Test func linearRejectsDroppingVariableTile() {
-    // The `x` (id 1) isn't a draggable number — reject.
-    #expect(throws: CombineError.self) {
-        _ = try combineEquation("2x + 3 = 5", draggedId: 1, targetId: 5)
-    }
+@Test func linearAcceptsDroppingVariableTile() throws {
+    // The `x` (id 1) moves 2x across the equals sign.
+    #expect(try combineEquation("2x + 3 = 5", draggedId: 1, targetSide: 1) == "3 = -2x + 5")
 }

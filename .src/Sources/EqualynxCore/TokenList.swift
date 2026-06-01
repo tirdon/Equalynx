@@ -26,7 +26,7 @@ private func appendTokens(_ expression: Expression, into tokens: inout [DisplayT
     case let .number(value):
         tokens.append(DisplayToken(kind: "number", value: value, tex: value))
     case let .variable(name):
-        tokens.append(DisplayToken(kind: "variable", value: name, tex: name))
+        tokens.append(DisplayToken(kind: "variable", value: name, tex: TeXGlyph.variable(name)))
     case let .constant(name):
         tokens.append(DisplayToken(kind: "constant", value: name, tex: TeXGlyph.constant(name)))
     case let .unary(op, operand):
@@ -43,6 +43,12 @@ private func appendTokens(_ expression: Expression, into tokens: inout [DisplayT
             if glueIndex < tokens.count {
                 tokens[glueIndex].glue = true
             }
+        } else if op == .divide {
+            let numTex = texString(for: lhs)
+            let denTex = texString(for: rhs)
+            let tex = "\\frac{\(numTex)}{\(denTex)}"
+            let value = "\(valueString(for: lhs))/\(valueString(for: rhs))"
+            tokens.append(DisplayToken(kind: "number", value: value, tex: tex))
         } else {
             appendTokens(lhs, into: &tokens)
             let glyph = TeXGlyph.binary(op)
@@ -52,6 +58,38 @@ private func appendTokens(_ expression: Expression, into tokens: inout [DisplayT
     case .function, .derivative:
         // Not produced by the arithmetic slice.
         break
+    }
+}
+
+private func texString(for expression: Expression) -> String {
+    switch expression {
+    case let .number(value): return value
+    case let .variable(name): return TeXGlyph.variable(name)
+    case let .constant(name): return TeXGlyph.constant(name)
+    case let .unary(op, operand):
+        return TeXGlyph.unary(op).tex + texString(for: operand)
+    case let .binary(op, lhs, rhs):
+        if op == .divide {
+            return "\\frac{\(texString(for: lhs))}{\(texString(for: rhs))}"
+        }
+        return texString(for: lhs) + TeXGlyph.binary(op).tex + texString(for: rhs)
+    default: return ""
+    }
+}
+
+private func valueString(for expression: Expression) -> String {
+    switch expression {
+    case let .number(value): return value
+    case let .variable(name): return name
+    case let .constant(name): return name
+    case let .unary(op, operand):
+        return TeXGlyph.unary(op).value + valueString(for: operand)
+    case let .binary(op, lhs, rhs):
+        if op == .divide {
+            return "\(valueString(for: lhs))/\(valueString(for: rhs))"
+        }
+        return valueString(for: lhs) + TeXGlyph.binary(op).value + valueString(for: rhs)
+    default: return ""
     }
 }
 

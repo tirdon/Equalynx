@@ -15,9 +15,9 @@
 (function () {
   "use strict";
 
-  const START_EQUATION = "2x + 3 = 5";
-  const STEP_TWO = "2x = 2";
-  const GOAL = "x = 1";
+  const START_EQUATION = "2 alpha + 3 = 5";
+  const STEP_TWO = "2 alpha = 2";
+  const GOAL = "alpha = 1";
 
   let board = null;
   let currentEquation = START_EQUATION;
@@ -110,7 +110,7 @@
     if (currentEquation === GOAL) {
       const win = document.createElement("div");
       win.className = "win";
-      win.textContent = "Solved!  x = 1";
+      win.textContent = "Solved!  α = 1";
       board.appendChild(win);
       return;
     }
@@ -123,10 +123,10 @@
 
   function hintFor(equation) {
     if (equation === START_EQUATION) {
-      return "Drag the 3 across onto the 5";
+      return "Drag the 3 across the =";
     }
     if (equation === STEP_TWO) {
-      return "Now drag the 2 across onto the 2";
+      return "Now drag the 2 across the =";
     }
     return "Drag a tile across the = to move it by its inverse";
   }
@@ -168,7 +168,7 @@
     });
   }
 
-  // On drop: if a number tile was dropped onto another number tile, try a combine.
+  // On drop: if a number tile was dropped on a side (LHS/RHS), try a combine.
   function handleDrop(dragged) {
     if (busy) {
       snapBack(dragged);
@@ -176,44 +176,49 @@
     }
 
     const kind = dragged.dataset.kind;
-    if (kind !== "number") {
+    if (kind !== "number" && kind !== "variable" && kind !== "constant") {
       snapBack(dragged);
       return;
     }
 
-    const target = numberTokenUnder(dragged);
-    if (!target) {
+    const targetSide = sideUnder(dragged);
+    if (targetSide === null) {
       snapBack(dragged);
       return;
     }
 
     const draggedId = parseInt(dragged.dataset.id, 10);
-    const targetId = parseInt(target.dataset.id, 10);
-    const result = window.Equalynx.combine(currentEquation, draggedId, targetId);
+    const result = window.Equalynx.combine(currentEquation, draggedId, targetSide);
 
     if (!result.ok) {
-      flashReject(target);
+      flashReject(dragged);
       snapBack(dragged);
       return;
     }
     resolveInto(result.text);
   }
 
-  // Find a number token (not the dragged one) whose box contains the dragged center.
-  function numberTokenUnder(dragged) {
+  // Find which side (0 for LHS, 1 for RHS) the dragged center is over, based on the equals sign.
+  function sideUnder(dragged) {
     const r = dragged.getBoundingClientRect();
     const cx = r.left + r.width / 2;
-    const cy = r.top + r.height / 2;
-      for (const el of tokenEls) {
-        if (el === dragged || el.dataset.kind !== "number") {
-          continue;
-        }
-        const b = el.getBoundingClientRect();
-        if (cx >= b.left && cx <= b.right && cy >= b.top && cy <= b.bottom) {
-          return el;
-        }
+    
+    let equalsToken = null;
+    for (const el of tokenEls) {
+      if (el.dataset.kind === "equals") {
+        equalsToken = el;
+        break;
       }
-    return null;
+    }
+    
+    if (!equalsToken) {
+      return null;
+    }
+    
+    const eqR = equalsToken.getBoundingClientRect();
+    const eqX = eqR.left + eqR.width / 2;
+    
+    return cx < eqX ? 0 : 1;
   }
 
   // Fade the current tiles out, then render the resulting equation.

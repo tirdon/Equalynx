@@ -23,11 +23,7 @@ enum CombineError: Error, Equatable, CustomStringConvertible {
 }
 
 /// Apply a combine to `input` and return the resulting equation string ("3 = 3").
-func combineEquation(_ input: String, draggedId: Int, targetId: Int) throws -> String {
-    if draggedId == targetId {
-        throw CombineError.invalidToken
-    }
-
+func combineEquation(_ input: String, draggedId: Int, targetSide: Int) throws -> String {
     let equation = try parseEquation(input)
     guard let rhs = equation.rhs else {
         throw CombineError.notAnEquation
@@ -37,7 +33,7 @@ func combineEquation(_ input: String, draggedId: Int, targetId: Int) throws -> S
     // (a side carries a variable) hand off to the linear-equation moves.
     guard let left = flattenAdditive(equation.lhs),
           let right = flattenAdditive(rhs) else {
-        return try combineLinear(equation, draggedId: draggedId, targetId: targetId)
+        return try combineLinear(equation, draggedId: draggedId, targetSide: targetSide)
     }
 
     // Number-token ids per side, taken from the same deterministic token list the
@@ -67,37 +63,23 @@ func combineEquation(_ input: String, draggedId: Int, targetId: Int) throws -> S
     }
 
     guard let dragged = locate(draggedId, leftIds: leftIds, rightIds: rightIds),
-          let target = locate(targetId, leftIds: leftIds, rightIds: rightIds) else {
+          targetSide == 0 || targetSide == 1 else {
         throw CombineError.invalidToken
     }
 
-    if dragged.side == target.side {
-        // Same side: merge the two terms into their sum.
+    if dragged.side == targetSide {
+        // Same side: merge all terms into their sum.
         let values = dragged.side == 0 ? left : right
-        let merged = values[dragged.index] + values[target.index]
-        let lo = min(dragged.index, target.index)
-        let hi = max(dragged.index, target.index)
-
-        var rebuilt: [Double] = []
-        var k = 0
-        while k < values.count {
-            if k == lo {
-                rebuilt.append(merged)
-            } else if k != hi {
-                rebuilt.append(values[k])
-            }
-            k += 1
-        }
-
+        let totalVal = total(values)
         return dragged.side == 0
-            ? renderEquation(rebuilt, right)
-            : renderEquation(left, rebuilt)
+            ? renderEquation([totalVal], right)
+            : renderEquation(left, [totalVal])
     }
 
-    // Cross side: subtract the dropped-on term from both sides; fold each to one number.
-    let targetValue = (target.side == 0 ? left : right)[target.index]
-    let leftTotal = total(left) - targetValue
-    let rightTotal = total(right) - targetValue
+    // Cross side: subtract the dragged term from both sides; fold each to one number.
+    let draggedValue = (dragged.side == 0 ? left : right)[dragged.index]
+    let leftTotal = total(left) - draggedValue
+    let rightTotal = total(right) - draggedValue
     return renderEquation([leftTotal], [rightTotal])
 }
 

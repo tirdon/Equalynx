@@ -129,10 +129,6 @@ private final class ExpressionParser {
     }
 
     private func parseIdentifier(_ name: String) throws -> Expression {
-        if isVariable(name) {
-            return .variable(name)
-        }
-
         if isConstant(name) {
             return .constant(name)
         }
@@ -149,15 +145,11 @@ private final class ExpressionParser {
             throw ExpressionParserError.unsupportedFunction(name)
         }
 
-        throw ExpressionParserError.unsupportedIdentifier(name)
-    }
-
-    private func isVariable(_ name: String) -> Bool {
-        name == "x" || name == "y"
+        return .variable(name)
     }
 
     private func isConstant(_ name: String) -> Bool {
-        name == "pi" || name == "e" || name == "phi" || name == "gamma"
+        name == "pi" || name == "e"
     }
 
     private func isUnaryFunction(_ name: String) -> Bool {

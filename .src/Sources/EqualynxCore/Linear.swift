@@ -95,13 +95,13 @@ struct LinearForm {
 enum TokenRole {
     case constant(side: Int, value: Ratio)               // a loose ± number
     case coefficient(side: Int, value: Ratio, variable: String) // the number in `2x`
-    case variableLetter(side: Int)                          // the `x`
+    case variable(side: Int, coefficient: Ratio, variable: String) // the `x`
     case other                                              // operator / equals
 }
 
 // MARK: - Combine on a linear equation
 
-func combineLinear(_ equation: Equation, draggedId: Int, targetId: Int) throws -> String {
+func combineLinear(_ equation: Equation, draggedId: Int, targetSide: Int) throws -> String {
     guard let rhs = equation.rhs else {
         throw CombineError.notAnEquation
     }
@@ -123,24 +123,18 @@ func combineLinear(_ equation: Equation, draggedId: Int, targetId: Int) throws -
     }
 
     guard draggedId >= 0, draggedId < roles.count,
-          targetId >= 0, targetId < roles.count else {
+          targetSide == 0 || targetSide == 1 else {
         throw CombineError.invalidToken
     }
 
     let dragged = roles[draggedId]
-    let target = roles[targetId]
-    guard let targetSide = side(of: target) else {
-        throw CombineError.invalidToken
-    }
 
     switch dragged {
     case let .constant(draggedSide, value):
         if targetSide == draggedSide {
             // Same side, both loose constants → merge them (render collapses to the sum).
-            if case .constant = target {
-                return render(leftForm, rightForm)
-            }
-            throw CombineError.unsupported
+            // (We just return the form, it inherently merges all constants on its side).
+            return render(leftForm, rightForm)
         }
         // Addend moved across: add its additive inverse to both sides (i.e. subtract
         // it), cancelling it on its own side.
@@ -159,6 +153,17 @@ func combineLinear(_ equation: Equation, draggedId: Int, targetId: Int) throws -
         // (i.e. divide by it), cancelling it on its own side and isolating the variable.
         return render(leftForm.dividedBy(value), rightForm.dividedBy(value))
 
+    case let .variable(draggedSide, coefficient, variableName):
+        if targetSide == draggedSide {
+            return render(leftForm, rightForm)
+        }
+        // Variable term moved across: add its additive inverse to both sides
+        leftForm.coefficient = leftForm.coefficient.minus(coefficient)
+        leftForm.variable = variableName
+        rightForm.coefficient = rightForm.coefficient.minus(coefficient)
+        rightForm.variable = variableName
+        return render(leftForm, rightForm)
+
     default:
         throw CombineError.invalidToken
     }
@@ -170,7 +175,7 @@ private func side(of role: TokenRole) -> Int? {
         return side
     case let .coefficient(side, _, _):
         return side
-    case let .variableLetter(side):
+    case let .variable(side, _, _):
         return side
     case .other:
         return nil
@@ -225,20 +230,32 @@ private func walkTerm(_ expression: Expression, sign: Int, side: Int, id: inout 
         let coefficient = Ratio(sign, 1)
         form.coefficient = form.coefficient.plus(coefficient)
         form.variable = name
-        roles.append(.variableLetter(side: side))
+        roles.append(.variable(side: side, coefficient: coefficient, variable: name))
         id += 1
         return true
 
     case let .binary(op, lhs, rhs):
+        if op == .divide {
+            if case let .number(numText) = lhs, case let .number(denText) = rhs,
+               let n = wholeInt(numText), let d = wholeInt(denText) {
+                let value = Ratio(sign * n, d)
+                form.constant = form.constant.plus(value)
+                roles.append(.constant(side: side, value: value))
+                id += 1
+                return true
+            }
+            return false
+        }
+        
         guard op == .implicitMultiply || op == .multiply else {
             return false
         }
         // coefficient × variable, in either written order.
-        if case let .number(text) = lhs, case let .variable(name) = rhs {
-            return appendCoefficientTimesVariable(numberText: text, name: name, numberFirst: true, explicit: op == .multiply, sign: sign, side: side, id: &id, form: &form, roles: &roles)
+        if extractRatio(from: lhs) != nil, case let .variable(name) = rhs {
+            return appendCoefficientTimesVariable(numberNode: lhs, name: name, numberFirst: true, explicit: op == .multiply, sign: sign, side: side, id: &id, form: &form, roles: &roles)
         }
-        if case let .variable(name) = lhs, case let .number(text) = rhs {
-            return appendCoefficientTimesVariable(numberText: text, name: name, numberFirst: false, explicit: op == .multiply, sign: sign, side: side, id: &id, form: &form, roles: &roles)
+        if case let .variable(name) = lhs, extractRatio(from: rhs) != nil {
+            return appendCoefficientTimesVariable(numberNode: rhs, name: name, numberFirst: false, explicit: op == .multiply, sign: sign, side: side, id: &id, form: &form, roles: &roles)
         }
         return false
 
@@ -247,16 +264,29 @@ private func walkTerm(_ expression: Expression, sign: Int, side: Int, id: inout 
     }
 }
 
-private func appendCoefficientTimesVariable(numberText: String, name: String, numberFirst: Bool, explicit: Bool, sign: Int, side: Int, id: inout Int, form: inout LinearForm, roles: inout [TokenRole]) -> Bool {
-    guard let n = wholeInt(numberText) else {
+private func extractRatio(from expression: Expression) -> Ratio? {
+    if case let .number(text) = expression {
+        guard let n = wholeInt(text) else { return nil }
+        return Ratio(n, 1)
+    }
+    if case let .binary(.divide, numExpr, denExpr) = expression,
+       case let .number(numText) = numExpr, case let .number(denText) = denExpr,
+       let n = wholeInt(numText), let d = wholeInt(denText) {
+        return Ratio(n, d)
+    }
+    return nil
+}
+
+private func appendCoefficientTimesVariable(numberNode: Expression, name: String, numberFirst: Bool, explicit: Bool, sign: Int, side: Int, id: inout Int, form: inout LinearForm, roles: inout [TokenRole]) -> Bool {
+    guard let ratio = extractRatio(from: numberNode) else {
         return false
     }
-    let coefficient = Ratio(sign * n, 1)
+    let coefficient = Ratio(sign * ratio.num, ratio.den)
     form.coefficient = form.coefficient.plus(coefficient)
     form.variable = name
 
     let coefficientRole = TokenRole.coefficient(side: side, value: coefficient, variable: name)
-    let variableRole = TokenRole.variableLetter(side: side)
+    let variableRole = TokenRole.variable(side: side, coefficient: coefficient, variable: name)
 
     if numberFirst {
         roles.append(coefficientRole)

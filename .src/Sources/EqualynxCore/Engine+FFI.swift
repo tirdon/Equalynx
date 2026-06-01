@@ -42,7 +42,7 @@ public func equalynxCombine(
     _ inputPointer: UnsafePointer<UInt8>?,
     _ inputLength: Int32,
     _ draggedId: Int32,
-    _ targetId: Int32
+    _ targetSide: Int32
 ) -> UnsafePointer<UInt8>? {
     guard inputLength > 0, let inputPointer else {
         return storeResult("No equation to combine.", succeeded: false)
@@ -51,7 +51,7 @@ public func equalynxCombine(
     let input = String(decoding: inputBytes, as: UTF8.self)
 
     do {
-        let result = try combineEquation(input, draggedId: Int(draggedId), targetId: Int(targetId))
+        let result = try combineEquation(input, draggedId: Int(draggedId), targetSide: Int(targetSide))
         return storeResult(result, succeeded: true)
     } catch let error as CombineError {
         return storeResult(error.description, succeeded: false)

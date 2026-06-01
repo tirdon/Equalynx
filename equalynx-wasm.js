@@ -114,9 +114,9 @@
     return JSON.parse(text || "[]");
   }
 
-  // Apply a combine move: drop number token `draggedId` onto `targetId`. Returns
+  // Apply a combine move: drop number token `draggedId` onto `targetSide` (0 for LHS, 1 for RHS). Returns
   // { ok, text } where text is the new equation string ("3 = 3") or a reason.
-  function combine(input, draggedId, targetId) {
+  function combine(input, draggedId, targetSide) {
     if (!exports) {
       throw new Error("Engine not ready");
     }
@@ -130,7 +130,7 @@
     let text = "";
     let ok = false;
     try {
-      const resultPtr = exports.equalynxCombine(inputPtr, byteLen, draggedId, targetId);
+      const resultPtr = exports.equalynxCombine(inputPtr, byteLen, draggedId, targetSide);
       const len = exports.equalynxLastResultLength();
       ok = exports.equalynxLastParseSucceeded() === 1;
       if (len > 0 && resultPtr) {
